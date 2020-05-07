@@ -25,23 +25,52 @@
 ### **三、实验过程与结果**   
 
 #### 1. 使用默认配置编译内核替换现有内核   
-- 从树莓派官网下载Linux镜像，写入SD卡中   
+- 从github下载官方Linux源码到本地   
 
-   ![目标端开发环境](./picture/目标端开发环境.png)   
+   ![git下载](./picture/git下载.png)   
 
-- 在SD卡根目录创建ssh文件，使能ssh，使用Putty连接树莓派目标端   
+- 在目录下使用默认设置配置.config文件   
 
-   ![登录](./picture/登录.png)   
+   ```shell
+   cd linux
+   KERNEL=kernel7
+   make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- bcm2709_defconfig
+   ```
 
-- `sudo raspi -config`打开VNC功能，使用VNC viewer远程登陆图形化界面，完成树莓派各项配置   
+- `make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs`编译文件，生成内核zImage、模块modules和设备树dtbs
 
-   ![VNC登录](./picture/VNC登录.png)   
+   ![编译默认内核](./picture/编译默认内核.png)   
 
+- `sudo env PATH=$PATH make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=/mnt/ext4 modules_install`在ext4分区安装module
+
+
+- 挂载SD卡，安装内核及dtb文件   
+
+   ```shell
+  sudo cp mnt/fat32/$KERNEL.img mnt/fat32/$KERNEL-backup.img
+  sudo cp arch/arm/boot/zImage mnt/fat32/$KERNEL.img
+  sudo cp arch/arm/boot/dts/*.dtb mnt/fat32/
+  sudo cp arch/arm/boot/dts/overlays/*.dtb* mnt/fat32/overlays/
+  sudo cp arch/arm/boot/dts/overlays/README mnt/fat32/overlays/
+  sudo umount mnt/fat32
+  sudo umount mnt/ext4
+  ```
+
+   ![安装内核和dtb](./picture/安装内核和dtb.png)
+
+
+- 插入SD卡，开启树莓派，在终端运行`uname -a`查询内核版本，观察到内核已更新为4.19.120，时间为2020年5月7日，内核更换成功
+
+   ![更换内核](./picture/更换内核.png)
+
+- 总结
+内核更换的过程中需要注意树莓派官方的building kernel文档所给出的命令存在路径的错误，需要在SD卡路径前补上斜杠`mnt/fat32 -> /mnt/fat32`，否则无法安装module及内核，另外挂载SD卡时注意使用sudo，否则会有读写权限问题。
 
 #### 2. 重新配置Linux内核，裁剪驱动和模块   
 
+- 参考网页：Linux内核裁剪<https://blog.csdn.net/lh2016rocky/article/details/70882449>
 
-
+<https://blog.csdn.net/qq_21078557/article/details/83044057>
 #### 3. 构建文件系统    
 
 
