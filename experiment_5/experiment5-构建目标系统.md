@@ -71,54 +71,31 @@
 ##### 1. 内核裁剪
 
 - 参考：<https://blog.csdn.net/lh2016rocky/article/details/70882449>
-              <https://blog.csdn.net/qq_21078557/article/details/83044057>
+<https://blog.csdn.net/qq_21078557/article/details/83044057>
+- 对编译进内核内容的裁剪，主要裁剪device driver部分
 
-Networking support -> CAN bus subsystem support
-NFC subsystem support
-802.1Q/802.1ad VLAN Support
-Appletalk protocol support
+| 位置 | 内容 | 备注 | 操作 |
+| :-: | :-: | :-: | :-: |
+-|NVME Support |NVME协议SSD支持|Y-> N
+-|Multiple devices driver support (RAID and LVM) |磁盘阵列支持 | Y -> N |
+|Network deivce support | PPP (point-to-point protocol) support| 点对点协议支持| Y -> N
+|Network deivce support|ATM drivers| ATM协议 用于路由交换|Y -> N
+|Network device support|ISDN support| 综合业务数字网| Y->N|
+-|Universal TUN/TAP device driver support| 用于虚拟网卡 | Y -> N
+-|FDDI driver support |光纤分布式数据接口 |Y -> N
+-|Open-Channel SSD target support 开放通道SSD | Y -> N
 
-Parallel port support 取消
-Block devices -> Block Device Driver for Micron PCIe SSDs
-Mylex DAC960/DAC1100 PCI RAID Controller support
-Micro Memory MM5415 Battery Backed RAM support
-Packet writing on CD/DVD media (DEPRECATED)  CD/DVD刻录支持
-IBM Flash Adapter 900GB Full Height PCIe Device Driver
+input device support| Joystick interface| 游戏操纵杆接口 | Y-> N
+input device support|Joysticks/Gamepads |游戏操纵杆驱动| Y-> N
+input device support|Tablets |平板驱动 |Y-> N
+input device support|Touchscreens| 触控板驱动 |Y -> N
+|Character devices | Legacy (BSD) PTY support| 传统伪终端 | Y->N
+|Character devices|TPM Hardware Support|基于硬件的“可信赖平台模块” | Y -> N
+|Multimedia devices|Analog TV support | 模拟TV |Y -> N
+|Multimedia devices|Digital TVsupport | 数字TV |Y -> N
+|AM/FM radio receivers|transmitters support|广播传输 |Y -> N
+-|Virtio drivers| 虚拟化驱动 | Y -> N
 
-NVME Support Y-> N
-
-Multiple devices driver support (RAID and LVM) Y -> N 磁盘阵列支持
-Network deivce support -> PPP (point-to-point protocol) support 点对点协议支持 Y -> M
-ATM drivers Y -> N
-SLIP (serial line) support
-IEEE 802.15.4 drivers 物联网协议
-VMware VMXNET3 ethernet driver
-Xen network device frontend driver
-Xen backend network device  虚拟机网络
-
-ISDN support 综合业务数字网 Y->N
-Universal TUN/TAP device driver support 用于虚拟网卡  Y -> N
-FDDI driver support 光纤分布式数据接口 Y -> N
-
-Open-Channel SSD target support 开放通道SSD  Y -> N
-
-input device support -> Joystick interface 游戏操纵杆接口
-Joysticks/Gamepads 游戏操纵杆驱动 Y-> N
-Tablets 平板驱动 Y-> N
-Touchscreens 触控板驱动 Y -> N
-
-Character devices -> Legacy (BSD) PTY support 传统伪终端  Y->N
-TPM Hardware Support Y -> N
-Analog TV support  Y -> N
-Digital TVsupport  Y -> N
-AM/FM radio receivers/transmitters support Y -> N
-Virtio drivers 虚拟化 Y -> N
-Parallel printer support 并行打印机支持
-Sony MemoryStick card support
-Parallel port LCD/Keypad Panel support
-IndustryPack bus support
-Industrial I/O support
-FPGA Configuration Framework
 
 - 配置menuconfig后，输入`make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs -j4`对内核进行编译，-j4可对编译过程进行多核优化，加快编译时间。
 
