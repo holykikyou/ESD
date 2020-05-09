@@ -59,7 +59,7 @@
    ![安装内核和dtb](./picture/安装内核和dtb.png)
 
 
-- 插入SD卡，开启树莓派，在终端运行`uname -a`查询内核版本，观察到内核已更新为4.19.120，时间为2020年5月7日，内核更换成功
+- 插入SD卡，开启树莓派，在终端运行`uname -a`查询内核版本，观察到内核已更新为4.19.120，内核生成时间为2020年5月7日，内核更换成功
 
    ![更换内核](./picture/更换内核.png)
 
@@ -68,12 +68,133 @@
 
 #### 2. 重新配置Linux内核，裁剪驱动和模块   
 
-- 参考网页：Linux内核裁剪<https://blog.csdn.net/lh2016rocky/article/details/70882449>
+##### 1. 内核裁剪
 
-<https://blog.csdn.net/qq_21078557/article/details/83044057>
-#### 3. 构建文件系统    
+- 参考：<https://blog.csdn.net/lh2016rocky/article/details/70882449>
+              <https://blog.csdn.net/qq_21078557/article/details/83044057>
 
+Networking support -> CAN bus subsystem support
+NFC subsystem support
+802.1Q/802.1ad VLAN Support
+Appletalk protocol support
 
+Parallel port support 取消
+Block devices -> Block Device Driver for Micron PCIe SSDs
+Mylex DAC960/DAC1100 PCI RAID Controller support
+Micro Memory MM5415 Battery Backed RAM support
+Packet writing on CD/DVD media (DEPRECATED)  CD/DVD刻录支持
+IBM Flash Adapter 900GB Full Height PCIe Device Driver
+
+NVME Support Y-> N
+
+Multiple devices driver support (RAID and LVM) Y -> N 磁盘阵列支持
+Network deivce support -> PPP (point-to-point protocol) support 点对点协议支持 Y -> M
+ATM drivers Y -> N
+SLIP (serial line) support
+IEEE 802.15.4 drivers 物联网协议
+VMware VMXNET3 ethernet driver
+Xen network device frontend driver
+Xen backend network device  虚拟机网络
+
+ISDN support 综合业务数字网 Y->N
+Universal TUN/TAP device driver support 用于虚拟网卡  Y -> N
+FDDI driver support 光纤分布式数据接口 Y -> N
+
+Open-Channel SSD target support 开放通道SSD  Y -> N
+
+input device support -> Joystick interface 游戏操纵杆接口
+Joysticks/Gamepads 游戏操纵杆驱动 Y-> N
+Tablets 平板驱动 Y-> N
+Touchscreens 触控板驱动 Y -> N
+
+Character devices -> Legacy (BSD) PTY support 传统伪终端  Y->N
+TPM Hardware Support Y -> N
+Analog TV support  Y -> N
+Digital TVsupport  Y -> N
+AM/FM radio receivers/transmitters support Y -> N
+Virtio drivers 虚拟化 Y -> N
+Parallel printer support 并行打印机支持
+Sony MemoryStick card support
+Parallel port LCD/Keypad Panel support
+IndustryPack bus support
+Industrial I/O support
+FPGA Configuration Framework
+
+- 配置menuconfig后，输入`make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs -j4`对内核进行编译，-j4可对编译过程进行多核优化，加快编译时间。
+
+  ![裁剪后make](./picture/裁剪后make.png)
+
+- 编译完成后得到新的kernel7.img，比较默认设置编译出的内核大小，裁剪后的内核比裁剪前减小了2672字节。二者大小差距不大的原因是第一次接触内核裁剪，对内核的裁剪较为保守，在充分理解各个选项的含义后可以做到更加优化的裁剪。
+
+   ![裁剪后大小](./picture/裁剪后大小.png)
+
+- 将裁剪后的内核、模块、dtb设备树写入树莓派SD卡中，启动树莓派，在终端运行`uname -a`查询内核生成时间，为2020年5月9日，裁剪后的内核运行成功。
+
+   ![裁剪后内核](./picture/裁剪后内核.png)
+
+##### 2. 模块的加载与卸载   
+
+- 运行`lsmod`命令查看当前运行的模块
+
+   ![lsmod](./picture/lsmod.png)
+
+- 在`/lib/modules/4.19.120-v7+/kernel/drivers/`目录下可查看安装到树莓派中的模块，选择`/connector/cn.ko`尝试进行模块的加载，使用`sudo insmod /lib/modules/4.19.120-v7+/kernel/drivers/connector/cn.ko`加载模块，`lsmod`查看运行的模块，cn模块加载成功。
+
+  ![模块加载1](./picture/模块加载1.png)
+
+  运行`sudo rmmod cn`卸载模块，`lsmod`查看运行的模块，cn模块消失，卸载成功。
+
+  ![模块卸载1](./picture/模块卸载1.png)
+
+- 选择`/pwm/pwn-bcm2835.ko`尝试加载第二个模块，`lsmod`查看运行的模块，pwn_bcm2835模块加载成功。
+
+  ![加载模块2](./picture/加载模块2.png)
+
+  运行`sudo rmmod pwn_bcm2835`卸载模块，`lsmod`查看运行的模块，pwn_bcm2835模块消失，卸载成功。
+
+   ![卸载模块2](./picture/卸载模块2.png) 
+
+- 总结
+内核的裁剪通过`make menuconfig`进行，大部分以模块形式加载的驱动可以裁剪掉以减小空间，而编译入内核的功能则需要仔细考虑，需要充分理解每个选项所代表的意义，才能做出正确的裁剪，在嵌入式系统的条件下，可以根据项目需求对内核进行裁剪，以获得最佳的性能。
+
+ #### 3. 构建文件系统    
+ 
+- 树莓派官方文件系统由fat格式boot分区和ext4格式rootfs分区组成。目前SD卡仅使用了8GB的容量，还有约7GB的空闲空间。
+
+  ![树莓派lsblk](./picture/树莓派lsblk.png) 
+  ![树莓派fdisk](./picture/树莓派fdisk.png) 
+
+- 尝试在树莓派端采用gparted工具对分区进行调整，由于根目录正在使用中，无法对分区进行修改，故将SD卡挂载到PC上对分区进行调整，压缩出5GB空间构建文件系统。
+
+  ![压缩分区](./picture/压缩分区.png) 
+
+- 在此基础上，将空余的5GB空间分为:1GB ext3系统挂载到/mnt/user1作为第一个存储分区，2GB ext3系统挂载到/mnt/user2作为第二个存储分区，通过建立3GB扩展分区实现，另外建立2GB swap作为交换空间提升树莓派性能，因为树莓派3B+内存为1GB，故交换空间设置为内存的两倍。
+
+  ![文件系统分区](./picture/文件系统分区.png) 
+
+  使用`sudo mount /dev/mmcblk0p5 /mnt/user1`命令将分出的ext3分区挂载到/mnt目录下，修改`/etc/fstab`文件，加入`/dev/mmcblk0p5  /mnt/user1  ext3 defaults 0 0    |        /dev/mmcblk0p6  /mnt/user2  ext3 defaults 0 0`实现开机挂载。
+
+   ![开机挂载](./picture/开机挂载.png) 
+
+  挂载成功后的文件系统如图所示。
+
+   ![文件目录](./picture/文件目录.png) 
+
+- 设置tmpfs优化文件系统性能
+tmpfs是将文件写入到内存中虚拟文件系统，掉电后消失，适用于将频繁读写的文件，设置为tmpfs以减少对SD卡的读写，另外，内存的读写速率比SD卡快，该操作也可以提升性能。
+
+在`/etc/fstab`文件中加入  
+``` shell
+tmpfs /tmp tmpfs defaults,noatime,nosuid,size=100m 0 0
+tmpfs /var/log tmpfs defaults,noatime,nosuid,mode=0755,size=100m 0 0
+tmpfs /var/spool/mqueue tmpfs defaults,noatime,nosuid,mode=0700,gid=12,size=30m 0 0
+``` 
+将/tmp，/var/log，/var/spoll/mqueue文件夹挂载为tmpfs。
+
+  ![tmpfs](./picture/tmpfs.png) 
+
+- 总结
+树莓派的文件系统仅支持ext2、ext3、ext4、fat16、fat32格式，因此选择了ext3格式构建文件系统，并将常用文件夹挂载为tmpfs，减少对SD卡的读写，另外设置了2GB交换空间提升系统性能。
 
 ### **四、实验总结**   
 
