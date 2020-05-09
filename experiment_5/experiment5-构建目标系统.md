@@ -71,29 +71,28 @@
 
 ##### 1. 内核裁剪   
 
-- 参考：<https://blog.csdn.net/lh2016rocky/article/details/70882449>   
-<https://blog.csdn.net/qq_21078557/article/details/83044057>   
+- 参考：<https://blog.csdn.net/lh2016rocky/article/details/70882449>   <https://blog.csdn.net/qq_21078557/article/details/83044057>   
 
 - 对编译进内核内容的裁剪，主要裁剪device driver部分   
 
 | 位置 | 内容 | 备注 | 操作 |
 | :-: | :-: | :-: | :-: |
--|SCSI device support | SCSI device support | SCSI设备支持|Y-> N
--|Multiple devices driver support (RAID and LVM) |磁盘阵列支持 | Y -> N |
+|SCSI device support | SCSI device support | SCSI设备支持|Y-> N
+|-|Multiple devices driver support (RAID and LVM) |磁盘阵列支持 | Y -> N 
 |Network deivce support|ATM drivers| ATM协议 用于路由交换|Y -> N
 |Network device support|ISDN support| 综合业务数字网| Y->N
-|USB Network Adapters|Simple USB Network Links|简易USB网络连接| Y->N
--|FDDI driver support |光纤分布式数据接口 |Y -> N
--|Open-Channel SSD target support | 开放通道SSD | Y -> N
-input device support|Joysticks/Gamepads |游戏操纵杆驱动| Y-> N
-input device support|Touchscreens| 触控板驱动 |Y -> N
-|Character devices | Legacy (BSD) PTY support| 传统伪终端 | Y->N
+|USB Network Adapters|Simple USB Network Links|简易USB网络连接| Y-> N
+|-|FDDI driver support |光纤分布式数据接口 |Y -> N
+|-|Open-Channel SSD target support | 开放通道SSD | Y -> N
+|input device support|Joysticks/Gamepads |游戏操纵杆驱动| Y-> N
+|input device support|Touchscreens| 触控板驱动 |Y -> N
+|Character devices | Legacy (BSD) PTY support| 传统伪终端 | Y-> N
 |Character devices|TPM Hardware Support|基于硬件的“可信赖平台模块” | Y -> N
 |Remote Controller support |Remote controller decoders | 远程控制器解码器 |Y -> N
 |Multimedia devices|Analog TVsupport | 模拟TV |Y -> N
 |Multimedia devices|Digital TVsupport | 数字TV |Y -> N
 |AM/FM radio receivers|transmitters support|广播传输 |Y -> N
--|Virtio drivers| 虚拟化驱动 | Y -> N   
+|-|Virtio drivers| 虚拟化驱动 | Y -> N   
 
    模块部分裁剪太多，在此略过。   
 
@@ -132,6 +131,7 @@ input device support|Touchscreens| 触控板驱动 |Y -> N
    ![卸载模块2](./picture/卸载模块2.png)   
 
 - 总结   
+
 内核的裁剪通过`make menuconfig`进行，大部分以模块形式加载的驱动可以裁剪掉以减小空间，而编译入内核的功能则需要仔细考虑，需要充分理解每个选项所代表的意义，才能做出正确的裁剪，在嵌入式系统的条件下，可以根据项目需求对内核进行裁剪，以获得最佳的性能。   
 
  #### 3. 构建文件系统    
@@ -158,21 +158,23 @@ input device support|Touchscreens| 触控板驱动 |Y -> N
    ![文件目录](./picture/文件目录.png)    
 
 - 设置tmpfs优化文件系统性能    
-tmpfs是将文件写入到内存中虚拟文件系统，掉电后消失，适用于将频繁读写的文件，设置为tmpfs以减少对SD卡的读写，另外，内存的读写速率比SD卡快，该操作也可以提升性能。   
 
-在`/etc/fstab`文件中加入     
-``` shell   
-tmpfs /tmp tmpfs defaults,noatime,nosuid,size=100m 0 0
-tmpfs /var/log tmpfs defaults,noatime,nosuid,mode=0755,size=100m 0 0
-tmpfs /var/spool/mqueue tmpfs defaults,noatime,nosuid,mode=0700,gid=12,size=30m 0 0
-```    
-将/tmp，/var/log，/var/spoll/mqueue文件夹挂载为tmpfs。   
+  tmpfs是将文件写入到内存中虚拟文件系统，掉电后消失，适用于将频繁读写的文件，设置为tmpfs以减少对SD卡的读写，另外，内存的读写速率比SD卡快，该操作也可以提升性能。   
+
+  在`/etc/fstab`文件中加入     
+  ``` shell   
+  tmpfs /tmp tmpfs defaults,noatime,nosuid,size=100m 0 0
+  tmpfs /var/log tmpfs defaults,noatime,nosuid,mode=0755,size=100m 0 0
+  tmpfs /var/spool/mqueue tmpfs defaults,noatime,nosuid,mode=0700,gid=12,size=30m 0 0
+  ```    
+  将/tmp，/var/log，/var/spoll/mqueue文件夹挂载为tmpfs。   
 
   ![tmpfs](./picture/tmpfs.png)   
 
 - 总结   
-树莓派的文件系统仅支持ext2、ext3、ext4、fat16、fat32格式，因此选择了ext3格式构建文件系统，并将常用文件夹挂载为tmpfs，减少对SD卡的读写，另外设置了2GB交换空间提升系统性能。   
+
+  树莓派的文件系统仅支持ext2、ext3、ext4、fat16、fat32格式，因此选择了ext3格式构建文件系统，并将常用文件夹挂载为tmpfs，减少对SD卡的读写，另外设置了2GB交换空间提升系统性能。   
 
 ### **四、实验总结**   
 
-本次实验我掌握了裁剪Linux内核的方法，理解了内核选项的意义，并根据项目要求对内核进行了裁剪，构建项目所需的文件系统。    
+  本次实验我掌握了裁剪Linux内核的方法，理解了内核选项的意义，并根据项目要求对内核进行了裁剪，构建项目所需的文件系统。    
