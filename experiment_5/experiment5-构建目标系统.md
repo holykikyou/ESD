@@ -76,32 +76,30 @@
 
 | 位置 | 内容 | 备注 | 操作 |
 | :-: | :-: | :-: | :-: |
--|NVME Support |NVME协议SSD支持|Y-> N
+-|SCSI device support | SCSI device support | SCSI设备支持|Y-> N
 -|Multiple devices driver support (RAID and LVM) |磁盘阵列支持 | Y -> N |
-|Network deivce support | PPP (point-to-point protocol) support| 点对点协议支持| Y -> N
 |Network deivce support|ATM drivers| ATM协议 用于路由交换|Y -> N
-|Network device support|ISDN support| 综合业务数字网| Y->N|
--|Universal TUN/TAP device driver support| 用于虚拟网卡 | Y -> N
+|Network device support|ISDN support| 综合业务数字网| Y->N
+|USB Network Adapters|Simple USB Network Links|简易USB网络连接| 
 -|FDDI driver support |光纤分布式数据接口 |Y -> N
 -|Open-Channel SSD target support 开放通道SSD | Y -> N
-
-input device support| Joystick interface| 游戏操纵杆接口 | Y-> N
 input device support|Joysticks/Gamepads |游戏操纵杆驱动| Y-> N
-input device support|Tablets |平板驱动 |Y-> N
 input device support|Touchscreens| 触控板驱动 |Y -> N
 |Character devices | Legacy (BSD) PTY support| 传统伪终端 | Y->N
 |Character devices|TPM Hardware Support|基于硬件的“可信赖平台模块” | Y -> N
-|Multimedia devices|Analog TV support | 模拟TV |Y -> N
+|Remote Controller support |Remote controller decoders | 模拟TV |Y -> N
+|Multimedia devices|Analog TVsupport | 模拟TV |Y -> N
 |Multimedia devices|Digital TVsupport | 数字TV |Y -> N
 |AM/FM radio receivers|transmitters support|广播传输 |Y -> N
 -|Virtio drivers| 虚拟化驱动 | Y -> N
 
+模块部分裁剪太多，在此略过。
 
 - 配置menuconfig后，输入`make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs -j4`对内核进行编译，-j4可对编译过程进行多核优化，加快编译时间。
 
   ![裁剪后make](./picture/裁剪后make.png)
 
-- 编译完成后得到新的kernel7.img，比较默认设置编译出的内核大小，裁剪后的内核比裁剪前减小了2672字节。二者大小差距不大的原因是第一次接触内核裁剪，对内核的裁剪较为保守，在充分理解各个选项的含义后可以做到更加优化的裁剪。
+- 编译完成后得到新的kernel7.img，比较默认设置编译出的内核大小，裁剪后的内核比裁剪前减小了119392字节。二者大小差距不大的原因是第一次接触内核裁剪，对内核的裁剪较为保守，在充分理解各个选项的含义后可以做到更加优化的裁剪。
 
    ![裁剪后大小](./picture/裁剪后大小.png)
 
