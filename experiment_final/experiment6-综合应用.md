@@ -311,45 +311,45 @@
    
    int main()
    {
-    int fd;
-    int data;
-    char buf[]="scull character device test by liweiheng";//写入   scull设备的内容
-    char buf_read[4096]; //scull设备的内容读入到该buf中
+        int fd;
+        int data;
+        char buf[]="scull character device test by liweiheng";//写入   scull设备的内容
+        char buf_read[4096]; //scull设备的内容读入到该buf中
     
-    if((fd=open("/dev/scull1",O_RDWR))<0){
-    //打开scull设备
-     perror("open");
-     printf("open scull WRONG！\n");
-     exit(1);
-     }
-    else
-     printf("open scull SUCCESS!\n");
+        if((fd=open("/dev/scull1",O_RDWR)) < 0){
+        //打开scull设备
+            perror("open");
+            printf("open scull WRONG！\n");
+            exit(1);
+        }
+        else
+            printf("open scull SUCCESS!\n");
      
-    printf("buf is :%s\n",buf); 
-    write(fd,buf,sizeof(buf)); //把buf中的内容写入scull设备
+        printf("buf is :%s\n",buf); 
+        write(fd,buf,sizeof(buf)); //把buf中的内容写入scull设备
     
-    lseek(fd,0,SEEK_SET); //把文件指针重新定位到文件开始的位置
+        lseek(fd,0,SEEK_SET); //把文件指针重新定位到文件开始的位置
+     
+        read(fd,buf_read,sizeof(buf)); //把scull设备中的内容读入到   buf_read中
     
-    read(fd,buf_read,sizeof(buf)); //把scull设备中的内容读入到   buf_read中
-    
-     printf("buf_read is :%s\n",buf_read);
+        printf("buf_read is :%s\n",buf_read);
    
    //数据清零  
-       ioctl(fd, SCULL_IOC_CLEAR);
+        ioctl(fd, SCULL_IOC_CLEAR);
    
    //直接传值测试
-       data = ioctl(fd, SCULL_IOC_QUERY);
-       data = 100;
-       ioctl(fd, SCULL_IOC_TELL, data);
+        data = ioctl(fd, SCULL_IOC_QUERY);
+        data = 100;
+        ioctl(fd, SCULL_IOC_TELL, data);
    
    //指针传值测试
-       ioctl(fd, SCULL_IOC_GET, &data);
-       data = 122;
-       ioctl(fd, SCULL_IOC_SET, &data);
+        ioctl(fd, SCULL_IOC_GET, &data);
+        data = 122;
+        ioctl(fd, SCULL_IOC_SET, &data);
     
    
     return 0;
-   }
+    }
    ```   
 
    编译后运行./test，成功输出结果，左侧终端使用`sudo cat /proc/kmsg`用于观察printk输出的调试信息，右侧终端观察正常调试信息，可见read、write、ioctl功能正常，设备测试成功。   
@@ -359,22 +359,23 @@
 #### - 总结   
    scull设备是一种学习linux驱动编写的工具，通过编写scull驱动，加深了对linux运行机制的认识，在驱动编写的过程中也遇到过一些问题，例如：   
 
-   1. `copy_to_user`，`copy_from_user`在新版linux内核中已不再使用，需要改为`raw_copy_from_user`，`raw_copy_to_user`才能成功编译。   
+   1. `copy_to_user`，`copy_from_user`在新版linux内核中已不再使用，需要修改为`raw_copy_from_user`，`raw_copy_to_user`才能成功编译。   
    2. 在linux内核源码树外编译scull遇到了无法找到头文件的问题，多次尝试后不能解决，尝试在内核源码树内编译成功，在kconfig选项中加入default m可以默认将两个scull设备作为模块编译，而不用在menuconfig中进行选择，相对更加方便。   
    3. printk无法在终端显示，需要打开一个新的终端，使用`sudo cat /proc/kmsg`才能观察printk的调试输出。   
 
  #### 2. 综合应用实验   
 
-   - 整体框架设计
+   - 整体框架设计   
 
       在树莓派上安装两个scull设备scull0和scull1，分别模拟PM2.5和温度信息，将两条信息分别保存在ext3文件系统的`/mnt/user1`和`/mnt/user2`两个目录下实现数据的可靠存储。再将信息写入到scull设备中，根据主机端发送的不同指令，传输scull设备中的数据到主机端。
 
       主机端与树莓派间通过socket建立可靠通信，主机端可向树莓派发送命令请求scull中的数据，主机端输入`read0`是请求scull0设备中的信息，主机端输入`read1`则是请求scull1设备中的信息，若输入其他字符则会返回错误。
 
-      树莓派端建立一个子进程打印从主机端接收到的指令，主进程根据收到指令读取对应scull设备中的信息发送给主机端。主机端建立一个子进程接收从键盘输入的指令，主进程将输入的指令发送到树莓派端，并输出树莓派端返回的数据。
+      树莓派端建立一个子进程打印从主机端接收到的指令，主进程根据收到指令读取对应scull设备中的信息发送给主机端。主机端建立一个子进程接收从键盘输入的指令，主进程将输入的指令发送到树莓派端，并输出树莓派端返回的数据，两进程间采用fifo管道进行通信。
+ 
+   - 实验过程   
 
-   - 实验过程
-      在主机端交叉编译树莓派端程序client
+      在主机端交叉编译树莓派端程序client   
 
       ![交叉编译client](./picture/交叉编译client.png)   
 
@@ -382,19 +383,21 @@
    
       ![编译server](./picture/编译server.png)   
 
-      在开发过程中进行GDB远程调试，GDB所提供的断点和单步调试功能极大地方便了开发
+      在开发过程中进行GDB远程调试，GDB所提供的断点和单步调试功能极大地方便了开发   
 
        ![gdb调试](./picture/gdb调试.png)   
 
-       最终运行整个系统，首先在主机端运行`./server`，再在树莓派端运行`sudo ./client`，树莓派端需要sudo来访问驱动文件
+       最终运行整个系统，首先在主机端运行`./server`，再在树莓派端运行`sudo ./client`，树莓派端需要sudo来访问驱动文件   
 
        ![树莓派端综合运行](./picture/树莓派端综合运行.png)   
        
        ![linux端综合运行](./picture/linux端综合运行.png)   
 
-       因为没有真实传感器采集数据，实验中在scull设备中存入字符串`scull0 data:temperature`、`scull1 data: PM2.5`模拟对传感器采集数值的读写操作，主机端采用`read0`、`read1`命令读取两个scull设备中的值。实验中分别读取了两个设备中的数据，若输入除两个命令以外的数据，则树莓派端不会返回scull的数据，返回`error instruction!`。
+       因为没有真实传感器采集数据，实验中在scull设备中存入字符串`scull0 data:temperature`、`scull1 data: PM2.5`模拟对传感器采集数值的读写操作，主机端采用`read0`、`read1`命令读取两个scull设备中的值。实验中分别读取了两个设备中的数据，若输入除两个命令以外的数据，则树莓派端不会返回scull的数据，返回`error instruction!`。   
 
 
 ### **四、实验总结**   
 
-    
+   在本次综合实验中，我们小组综合运用了整个学期中所学到的知识，如文件系统、多进程编程、交叉编译、远程调试、驱动编写、socket、fifo管道等，在此基础上完成了整个系统的搭建，实现了从主机端向树莓派挂载的设备请求数据的功能，加深了对嵌入式开发的理解。   
+
+
