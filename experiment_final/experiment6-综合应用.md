@@ -207,7 +207,7 @@
       }
       ```   
 
-      在驱动程序中，IO指令由4个部分组成：幻scull_数magic、序数number、位置direction、大小size，四部分组合可唯一确定一条指令，在头文件scull.h中定义。   
+      在驱动程序中，IO指令由4个部分组成：幻数scull_magic、序数number、位置direction、大小size，四部分组合可唯一确定一条指令，在头文件scull.h中定义。   
 
       scull_ioctl中定义了五条指令，分别是清除数据、通过指针从设备获得数据、通过返回值从设备获得数据、通过指针向设备写数据、通过参数向设备写数据，使用printk输出调试信息。   
 
@@ -362,6 +362,37 @@
    1. `copy_to_user`，`copy_from_user`在新版linux内核中已不再使用，需要改为`raw_copy_from_user`，`raw_copy_to_user`才能成功编译。   
    2. 在linux内核源码树外编译scull遇到了无法找到头文件的问题，多次尝试后不能解决，尝试在内核源码树内编译成功，在kconfig选项中加入default m可以默认将两个scull设备作为模块编译，而不用在menuconfig中进行选择，相对更加方便。   
    3. printk无法在终端显示，需要打开一个新的终端，使用`sudo cat /proc/kmsg`才能观察printk的调试输出。   
+
+ #### 2. 综合应用实验   
+
+   - 整体框架设计
+
+      在树莓派上安装两个scull设备scull0和scull1，分别模拟PM2.5和温度信息，将两条信息分别保存在ext3文件系统的`/mnt/user1`和`/mnt/user2`两个目录下实现数据的可靠存储。再将信息写入到scull设备中，根据主机端发送的不同指令，传输scull设备中的数据到主机端。
+
+      主机端与树莓派间通过socket建立可靠通信，主机端可向树莓派发送命令请求scull中的数据，主机端输入`read0`是请求scull0设备中的信息，主机端输入`read1`则是请求scull1设备中的信息，若输入其他字符则会返回错误。
+
+      树莓派端建立一个子进程打印从主机端接收到的指令，主进程根据收到指令读取对应scull设备中的信息发送给主机端。主机端建立一个子进程接收从键盘输入的指令，主进程将输入的指令发送到树莓派端，并输出树莓派端返回的数据。
+
+   - 实验过程
+      在主机端交叉编译树莓派端程序client
+
+      ![交叉编译client](./picture/交叉编译client.png)   
+
+      主机端采用gcc编译server，加入-g选项以备调试   
+   
+      ![编译server](./picture/编译server.png)   
+
+      在开发过程中进行GDB远程调试，GDB所提供的断点和单步调试功能极大地方便了开发
+
+       ![gdb调试](./picture/gdb调试.png)   
+
+       最终运行整个系统，首先在主机端运行`./server`，再在树莓派端运行`sudo ./client`，树莓派端需要sudo来访问驱动文件
+
+       ![树莓派端综合运行](./picture/树莓派端综合运行.png)   
+       
+       ![linux端综合运行](./picture/linux端综合运行.png)   
+
+       因为没有真实传感器采集数据，实验中在scull设备中存入字符串`scull0 data:temperature`、`scull1 data: PM2.5`模拟对传感器采集数值的读写操作，主机端采用`read0`、`read1`命令读取两个scull设备中的值。实验中分别读取了两个设备中的数据，若输入除两个命令以外的数据，则树莓派端不会返回scull的数据，返回`error instruction!`。
 
 
 ### **四、实验总结**   
