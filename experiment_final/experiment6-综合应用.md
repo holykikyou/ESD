@@ -1,6 +1,6 @@
 # **<center><font size=6>嵌入式软件开发技术与工具实验报告六</font></center>**
 
-<center><font>黎炜桁</font></center>
+<center><font>黎炜桁 冉然 刘一丁</font></center>
 
 ---
 
@@ -363,7 +363,148 @@
    2. 在linux内核源码树外编译scull遇到了无法找到头文件的问题，多次尝试后不能解决，尝试在内核源码树内编译成功，在kconfig选项中加入default m可以默认将两个scull设备作为模块编译，而不用在menuconfig中进行选择，相对更加方便。   
    3. printk无法在终端显示，需要打开一个新的终端，使用`sudo cat /proc/kmsg`才能观察printk的调试输出。   
 
- #### 2. 综合应用实验   
+
+#### 2. 构建服务端、客户端程序 
+
+   - 程序框架   
+
+      ![程序架构](./picture/程序架构图.png)   
+
+   - socket通信   
+
+       客户端   
+ 
+       ```C
+       //客户端client   
+       int sock = socket(AF_INET, SOCK_STREAM, 0);
+       //向服务器（特定的IP和端口）发起请求
+       struct sockaddr_in serv_addr;
+       memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
+       serv_addr.sin_family = AF_INET;  //使用IPv4地址
+       serv_addr.sin_addr.s_addr = inet_addr("192.168.0.108");  //具体的IP地址
+       serv_addr.sin_port = htons(1234);  //端口
+       connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+       ```
+
+       服务端   
+
+       ```C   
+       //服务端server
+       //创建套接字
+       int serv_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+       //将套接字和IP、端口绑定
+       struct sockaddr_in serv_addr;
+       memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
+       serv_addr.sin_family = AF_INET;  //使用IPv4地址
+       serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+       serv_addr.sin_port = htons(1234);  //端口
+       bind(serv_sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+       //进入监听状态，等待用户发起请求
+       listen(serv_sock, 20);
+       printf("waiting client...\n");
+       //接收客户端请求
+       struct sockaddr_in clnt_addr;
+       socklen_t clnt_addr_size = sizeof(clnt_addr);
+       int clnt_sock = accept(serv_sock, (struct sockaddr*)&clnt_addr, &    clnt_addr_size);
+       if(-1==clnt_sock){
+   	    printf("error\n");
+   	    return 2;
+       }
+       printf("connectc client success..\n");nfig
+       ```   
+   
+       socket通信部分实现局域网下两设备的网络连接，通过端口1234传递信息。
+   
+   - 父进程与子进程FIFO通信   
+
+      客户端   
+
+      ```C
+      //父进程
+      client1fd = open("client1pipe",O_WRONLY,0);//向子进程发送信息
+      while(1)
+      {
+          char recvMsg[100] = {0};
+          int r;
+      		r = recv(sock, recvMsg, 255, NULL);
+      		if (r > 0) {
+                //fifo
+                write(client1fd,recvMsg,strlen(recvMsg)+1);
+      			printf("Message from server:%s\n", recvMsg);			
+      		}
+
+      write(sock, recvMsg, strlen(recvMsg));//将接收到的数据返回服务端,表示成功接收到
+       
+      //子进程
+      buf[100] = {0};
+      readfd = open("client1pipe",O_RDONLY,0);
+      read(readfd,buf,100);
+      close(readfd);
+      printf("read message from parents :%s\n", buf);
+      ```   
+
+      服务端   
+
+      ```C   
+      //父进程   
+      readfd = open("serverpipe",O_RDONLY,0);
+      read(readfd,buf,100);
+      //printf("Message from server:%s\n", buf);
+      write(clnt_sock, buf, strlen(buf)+1);
+   
+      printf("waiting  repeat\n");
+   
+      int r;
+      char recvMsg[100] = {0};
+   	  r = recv(clnt_sock, recvMsg, 255, NULL);
+   	  if (r > 0) {
+   	      printf("Message from client:%s\n", recvMsg);
+      }
+   
+      //子进程
+      writefd = open("serverpipe",O_WRONLY,0);
+      char str[100] = {0};   //keyboard input
+      //scanf("%s",str);
+   
+      fgets(str,100,stdin);
+      str[strlen(str)-1]='\0';
+      write(writefd,str,strlen(str)+1);
+   	  printf("Message from keyboard input:%s\n", str);
+      ```   
+
+      在父子进程的FIFO通信中,先用open()函数打开管道,再在一进程中使用write函数写入,在另一进程中read函数读出。
+
+   - 测试
+
+      分别进行编译:   
+
+      server.c编译并运行   
+
+      ![程序架构](./picture/服务端编译.png)   
+
+      client.cpp编译并运行   
+
+      ![程序架构](./picture/客户端编译.png)     
+   
+      显示socket连接成功:   
+
+      ![程序架构](./picture/socket连接.png)   
+
+      服务端子进程接收键盘输入数据hello和a,成功收到了客户端返回的确认信息。   
+
+      ![程序架构](./picture/服务端输出.png)
+
+      观察客户端输出,父进程从服务端成功接收到了hello和a,并成功发送给子进程输出。   
+
+      ![程序架构](./picture/客户端输出.png)   
+  
+   - 总结
+
+      在实验的过程中也遇到过一些问题，例如：
+
+      1. 对strlen函数的理解出现了偏差,strlen函数求字符串的长度并不包括/0,所以srtlen求出的长度还要加1,否则输出会错误。   
+
+ #### 3. 综合应用实验   
 
    - 整体框架设计   
 
@@ -371,8 +512,101 @@
 
       主机端与树莓派间通过socket建立可靠通信，主机端可向树莓派发送命令请求scull中的数据，主机端输入`read0`是请求scull0设备中的信息，主机端输入`read1`则是请求scull1设备中的信息，若输入其他字符则会返回错误。
 
-      树莓派端建立一个子进程打印从主机端接收到的指令，主进程根据收到指令读取对应scull设备中的信息发送给主机端。主机端建立一个子进程接收从键盘输入的指令，主进程将输入的指令发送到树莓派端，并输出树莓派端返回的数据，两进程间采用fifo管道进行通信。
+      树莓派端建立一个子进程打印从主机端接收到的指令，主进程根据收到指令读取对应scull设备中的信息发送给主机端。主机端建立一个子进程接收从键盘输入的指令并发送给主进程，主进程将输入的指令发送到树莓派端，接收并输出树莓派端返回的数据，两进程间采用fifo管道进行通信。
  
+   - 实验代码   
+
+      在上文客户端程序的基础上，添加对scull设备的读写支持及接收相关命令后的操作，完成整个工程的组建。   
+
+      - 在client.c中打开两个scull设备和存放数据的文件，将文件中数据写入scull设备   
+
+         ```C
+         int fd_file0,fd_file1,fd_scull0,fd_scull1;
+         int data;
+         char buf0[30];//写入scull设备的内容
+         char buf1[30];
+         char buf_read0[4096]; //scull设备的内容读入到该buf中
+         char buf_read1[4096];
+        
+         if((fd_file0 = open("/mnt/user1/scull0data",O_RDWR | O_CREAT,      S_IRUSR | S_IWUSR))<0){
+             perror("open");
+             printf("open FILE0 WRONG！\n");
+             exit(1);
+         }
+         else
+           printf("open FILE0 SUCCESS!\n");
+         
+         if((fd_file1 = open("/mnt/user2/scull1data",O_RDWR | O_CREAT,      S_IRUSR | S_IWUSR))<0){
+             perror("open");
+             printf("open FILE1 WRONG！\n");
+             exit(1);
+         }
+         else
+             printf("open FILE1 SUCCESS!\n");
+         
+         read(fd_file0, buf0, 30);
+         
+         read(fd_file1, buf1, 30);
+         
+         if((fd_scull0 = open("/dev/scull0",O_RDWR))<0){
+         //打开scull0设备
+             perror("open");
+             printf("open scull0 WRONG！\n");
+             exit(1);
+         }
+         else
+             printf("open scull0 SUCCESS!\n");
+     
+         
+         if(write(fd_scull0,buf0,sizeof(buf0) ) == 0)
+             printf("write failed!\n");
+         
+         printf("buf0 is :%s\n",buf0); 
+     
+         if((fd_scull1 = open("/dev/scull1",O_RDWR))<0){
+         //打开scull1设备
+             perror("open");
+             printf("open scull1 WRONG！\n");
+             exit(1);
+         }
+         else
+             printf("open scull1 SUCCESS!\n");
+     
+         
+         if(write(fd_scull1,buf1,sizeof(buf1) ) == 0)
+             printf("write failed!\n");
+         
+         printf("buf1 is :%s\n",buf1); 
+         ```   
+
+      - 根据接收到的指令做出回应，若recvMsg接收到的为`read0`，则将scull0设备中存储的数据读出，通过socket管道传输到主机端；若recvMsg接收到的为`read1`，则将scull1设备中存储的数据读出，通过socket管道传输到主机端；其他情况下则返回一条`error instruction`信息   
+
+         ```c
+         if(recvMsg[0] == 'r' && recvMsg[1] == 'e' && recvMsg[2] == 'a' && recvMsg[3] == 'd' && recvMsg[4] == '0'){//读取scull0中的数据
+
+            printf("send message: scull0 data\n");
+            lseek(fd_scull0,0,SEEK_SET); //把文件指针重新定位到文件开始的位置
+   
+            read(fd_scull0,buf_read0,strlen(buf0)); //把scull设备中的内容读入到buf_read中
+            write(sock, buf_read0, strlen(buf_read0));
+            //recvMsg = "scull control";
+            //write(sock, recvMsg, strlen(recvMsg));
+         }else if(recvMsg[0] == 'r' && recvMsg[1] == 'e' && recvMsg[2] == 'a' && recvMsg[3] == 'd' && recvMsg[4] == '1'){//读取scull1中的数据
+
+            printf("send message: scull1 data\n");
+            lseek(fd_scull1,0,SEEK_SET); //把文件指针重新定位到文件开始的位置
+   
+            read(fd_scull1,buf_read1,strlen(buf1)); //把scull设备中的内容读入到buf_read中
+            write(sock, buf_read1, strlen(buf_read1));
+            //recvMsg = "scull control";
+            //write(sock, recvMsg, strlen(recvMsg));
+         }else{//非读取指令，返回错误
+            printf("error instruction!\n");
+            char error[] = "error instruction!";
+            write(sock, error, strlen(error));
+         ```
+
+
    - 实验过程   
 
       在主机端交叉编译树莓派端程序client   
