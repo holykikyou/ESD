@@ -49,7 +49,7 @@ int client1fd;
   read(fd_file1, buf1, 30);
   
  if((fd_scull0 = open("/dev/scull0",O_RDWR))<0){
- //打开scull设备
+ //打开scull0设备
   perror("open");
   printf("open scull0 WRONG！\n");
   exit(1);
@@ -64,7 +64,7 @@ int client1fd;
 printf("buf0 is :%s\n",buf0); 
 
  if((fd_scull1 = open("/dev/scull1",O_RDWR))<0){
- //打开scull设备
+ //打开scull1设备
   perror("open");
   printf("open scull1 WRONG！\n");
   exit(1);
@@ -125,7 +125,7 @@ while(1)
 			printf("Message from server:%s\n", recvMsg);
 			
 		}
-    if(recvMsg[0] == 'r' && recvMsg[1] == 'e' && recvMsg[2] == 'a' && recvMsg[3] == 'd' && recvMsg[4] == '0'){
+    if(recvMsg[0] == 'r' && recvMsg[1] == 'e' && recvMsg[2] == 'a' && recvMsg[3] == 'd' && recvMsg[4] == '0'){//读取scull0中的数据
 
     printf("send message: scull0 data\n");
     lseek(fd_scull0,0,SEEK_SET); //把文件指针重新定位到文件开始的位置
@@ -134,7 +134,7 @@ while(1)
     write(sock, buf_read0, strlen(buf_read0));
     //recvMsg = "scull control";
     //write(sock, recvMsg, strlen(recvMsg));
-    }else if(recvMsg[0] == 'r' && recvMsg[1] == 'e' && recvMsg[2] == 'a' && recvMsg[3] == 'd' && recvMsg[4] == '1'){
+    }else if(recvMsg[0] == 'r' && recvMsg[1] == 'e' && recvMsg[2] == 'a' && recvMsg[3] == 'd' && recvMsg[4] == '1'){//读取scull1中的数据
 
     printf("send message: scull1 data\n");
     lseek(fd_scull1,0,SEEK_SET); //把文件指针重新定位到文件开始的位置
@@ -144,7 +144,7 @@ while(1)
     //recvMsg = "scull control";
     //write(sock, recvMsg, strlen(recvMsg));
     }else
-    {
+    {//非读取指令，返回错误
         printf("error instruction!\n");
         char error[] = "error instruction!";
         write(sock, error, strlen(error));
